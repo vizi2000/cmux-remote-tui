@@ -1,5 +1,10 @@
 # cmux-remote-tui
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Zero dependencies](https://img.shields.io/badge/dependencies-none-success.svg)](pyproject.toml)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+
 **Control your [cmux](https://github.com/manaflow-ai/cmux) terminal on another
 machine, over SSH, from a single fast TUI.** Browse every workspace and terminal,
 fuzzy-find the one you want, watch it live, and **attach interactively** — your
