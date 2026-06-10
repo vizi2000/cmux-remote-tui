@@ -22,7 +22,10 @@ classifiers = [
     "Topic :: Terminals",
     "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = [
+    "textual>=0.80.0",  # SOTA reactive TUI framework for beautiful, interactive, mouse+keyboard UI
+    "rich>=13.0.0",     # Already powerful with Textual for ANSI, tables, etc.
+]
 
 [project.urls]
 Homepage = "https://github.com/vizi2000/cmux-remote-tui"
@@ -31,6 +34,7 @@ Issues = "https://github.com/vizi2000/cmux-remote-tui/issues"
 
 [project.scripts]
 cmux-remote = "cmux_remote_tui.client:_console"
+cmux-remote-tui = "cmux_remote_tui.textual_app:run_app"  # new SOTA Textual entrypoint (v0.2+)
 
 [tool.hatch.build.targets.wheel]
 packages = ["cmux_remote_tui"]
