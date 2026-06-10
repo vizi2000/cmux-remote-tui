@@ -16,6 +16,7 @@ Run with: cmux-remote-tui  (or python -m cmux_remote_tui.textual_app)
 from __future__ import annotations
 
 import asyncio
+import os
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Header, Footer, Tree, RichLog, Static, Input
@@ -23,6 +24,7 @@ from textual.binding import Binding
 from textual.reactive import reactive
 
 from .client import Agent  # reuse the existing fast client/agent
+from .llm import get_llm  # new flexible LLM support (local grok/claude/codex cli + openrouter + any openai-compatible)
 
 
 class CmuxRemoteApp(App):
@@ -89,9 +91,20 @@ class CmuxRemoteApp(App):
 
     def __init__(self, host: str | None = None):
         super().__init__()
-        self.host = host or "desk"  # TODO: from env / config
+        self.host = host or os.environ.get("CMUX_REMOTE_HOST") or "desk"
         self.agent = Agent(self.host)  # reuse existing fast persistent client
-        self.tree_data: list[dict] = []  # flattened or hierarchical from agent.tree
+        self.tree_data: list[dict] = []
+        # LLM provider configurable via env (as requested: local grok/claude/codex cli + openrouter + openai-compatible)
+        # Examples:
+        #   export CMUX_LLM_PROVIDER=local-claude
+        #   export CMUX_LLM_MODEL=claude-3-5-sonnet-20241022
+        #   export CMUX_LLM_PROVIDER=openrouter
+        #   export OPENROUTER_API_KEY=sk-...
+        #   export CMUX_LLM_MODEL=anthropic/claude-3.5-sonnet
+        #   export CMUX_LLM_PROVIDER=openai-compatible
+        #   export OPENAI_BASE_URL=https://llm.borg.tools/v1
+        #   export OPENAI_API_KEY=...
+        self.llm = get_llm()  # auto from env or defaults to openai-compatible
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)

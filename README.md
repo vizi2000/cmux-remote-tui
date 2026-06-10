@@ -146,13 +146,52 @@ detach (because `Esc` has to pass through to whatever's running).
 | `CMUX_BIN` | `/Applications/cmux.app/Contents/Resources/bin/cmux` | cmux CLI path on the remote host |
 | `CMUX_SOCKET_PASSWORD` | — | cmux socket password (read on the remote host) |
 
-## Limitations
+## Limitations (v0.1 curses version)
 
 - Attach is screen-mirroring + key-injection, not a raw PTY, so very high-FPS,
   full-screen redraws (e.g. fast `htop`) update at ~5–6 fps. Pickers, menus,
   prompts, and editing feel smooth.
 - Function keys (`F1`–`F12`) aren't currently mapped (cmux doesn't accept them via
   `send-key`).
+
+## v0.2+ (Textual – in development)
+
+We are moving to **Textual** for a true state-of-the-art TUI:
+- Proper hierarchical tree (full cmux structure: windows → workspaces → panes → surfaces)
+- Beautiful reactive UI, mouse support, themes, command palette
+- Dedicated LLM "Conductor" panel (the killer feature)
+
+### LLM Synthesis Layer (what makes it better than local cmux)
+
+The remote TUI can read multiple surfaces (even across machines), feed them to an LLM, and synthesize:
+
+- Per-surface status (agent type, task, state: working/stuck/waiting/done, last output)
+- Global prioritized "Focus List" with concrete suggested actions
+- Cross-surface intelligence ("what needs attention right now?")
+
+**Supported providers** (configure via environment variables):
+
+```bash
+# Local CLIs (your preference)
+export CMUX_LLM_PROVIDER=local-claude
+export CMUX_LLM_MODEL=claude-3-5-sonnet-20241022
+# or local-grok / local-codex
+
+# OpenRouter
+export CMUX_LLM_PROVIDER=openrouter
+export OPENROUTER_API_KEY=sk-or-...
+export CMUX_LLM_MODEL=anthropic/claude-3.5-sonnet
+
+# Any OpenAI-compatible (llm.borg.tools, local llama.cpp, vLLM, etc.)
+export CMUX_LLM_PROVIDER=openai-compatible
+export OPENAI_BASE_URL=https://llm.borg.tools/v1
+export OPENAI_API_KEY=...
+export CMUX_LLM_MODEL=claude-3-5-sonnet-20241022   # or whatever the endpoint supports
+```
+
+Then in the TUI press `Ctrl+S` (or the button) to trigger synthesis on the current selection / active surfaces.
+
+This layer turns raw terminal noise into actionable orchestration intelligence – something the local cmux GUI cannot do when you're driving many agents from a laptop.
 
 ## Contributing
 
