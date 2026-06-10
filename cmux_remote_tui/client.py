@@ -102,6 +102,14 @@ class Agent:
         self.connected = True
         return resp.get("data")
 
+    def get_full_tree(self) -> Dict[str, Any]:
+        """Return full hierarchical cmux tree for domain model construction."""
+        data = self.call("tree")
+        if data and "full_tree" in data:
+            return data["full_tree"]
+        # Fallback: if old agent, reconstruct (not perfect but works)
+        return {"windows": [], "active": data.get("active") if data else None}
+
     def cmux(self, argv):
         return self.call("cmux", {"argv": argv}) or {"rc": 1, "out": "", "err": "no conn"}
 

@@ -58,7 +58,12 @@ def op_tree(args):
     if rc != 0:
         raise RuntimeError(err.strip() or "tree failed")
     tree = json.loads(out)
-    return {"rows": flatten(tree), "active": tree.get("active")}
+    # Return both flat (for CLI compat) and full hierarchical for new TUI
+    return {
+        "rows": flatten(tree),
+        "active": tree.get("active"),
+        "full_tree": tree  # raw cmux structure for perfect hierarchy mirroring
+    }
 
 
 def op_read(args):
