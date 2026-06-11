@@ -230,6 +230,13 @@ class CmuxRemoteApp(App):
             self.orchestrator.execute(["browser", "open", "https://news.ycombinator.com"])
             self.query_one("#llm-log", RichLog).write("[cyan]Browser open triggered (see cmux skill for full verbs)[/]")
 
+    def action_focus(self) -> None:
+        """Focus the tree pane."""
+        try:
+            self.query_one("#tree-pane", Tree).focus()
+        except Exception:
+            pass
+
     def action_help(self) -> None:
         """Show help overlay."""
         log = self.query_one("#llm-log", RichLog)
