@@ -181,9 +181,21 @@ class CmuxRemoteApp(App):
 
     def action_browser_open(self) -> None:
         if self.current_surface:
-            # Example of exposing browser commands (full parity)
             self.orchestrator.execute(["browser", "open", "https://news.ycombinator.com"])
             self.query_one("#llm-log", RichLog).write("[cyan]Browser open triggered (see cmux skill for full verbs)[/]")
+
+    def action_help(self) -> None:
+        """Show help overlay."""
+        log = self.query_one("#llm-log", RichLog)
+        log.write("[bold]=== cmux-remote-tui v0.2 — Help ===[/]")
+        log.write("j/k/↑/↓  navigate tree")
+        log.write("Enter/a  attach to surface")
+        log.write("f  focus surface")
+        log.write("r  refresh tree")
+        log.write("Ctrl+S  LLM synthesize")
+        log.write("b  browser open (demo)")
+        log.write("q  quit")
+        log.write("?  this help")
 
 
 def run_app():

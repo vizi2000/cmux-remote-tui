@@ -4,6 +4,7 @@ Implements LlmProvider port for local CLIs and OpenAI-compatible (incl. OpenRout
 """
 
 from __future__ import annotations
+import time
 from typing import Any
 
 from ..domain.protocols import LlmProvider

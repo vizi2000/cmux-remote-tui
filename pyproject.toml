@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cmux-remote-tui"
-version = "0.1.0"
-description = "A fast, fluid TUI to control the cmux terminal on another machine over SSH — browse, fuzzy-find, preview, and attach to remote terminals live."
+version = "0.2.0"
+description = "A state-of-the-art remote TUI for cmux — browse, fuzzy-find, preview, attach, and LLM-powered synthesis over SSH."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
@@ -38,3 +38,25 @@ cmux-remote-tui = "cmux_remote_tui.textual_app:run_app"  # new SOTA Textual entr
 
 [tool.hatch.build.targets.wheel]
 packages = ["cmux_remote_tui"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["cmux_remote_tui"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 25

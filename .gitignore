@@ -11,6 +11,15 @@ venv/
 .ruff_cache/
 .pytest_cache/
 
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Env
+.env
+.env.local
+
 # OS
 .DS_Store
 

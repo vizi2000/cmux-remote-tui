@@ -21,6 +21,7 @@ import subprocess
 import sys
 import threading
 import time
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 HOST = os.environ.get("CMUX_REMOTE_HOST") or os.environ.get("CMUX_MINI_HOST", "")
 # Where the remote agent lives on the target host (override with CMUX_REMOTE_AGENT).
