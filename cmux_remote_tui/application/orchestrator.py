@@ -116,6 +116,10 @@ class CmuxOrchestrator:
             self._on_synthesis_ready(SynthesisReady(result))
         return result
 
+    def execute(self, argv: List[str]) -> dict:
+        """Raw cmux command, return result dict."""
+        return self._client.execute(argv) or {"rc": 1, "err": "no conn"}
+
     def _build_synthesis_prompt(self, ctx: SynthesisContext) -> str:
         parts = ["You are an expert multi-agent coding orchestrator for cmux (advanced terminal for AI agents like Claude, Hermes, etc.).\n"]
         parts.append("Analyze these live screens from remote surfaces. For each provide:\n")

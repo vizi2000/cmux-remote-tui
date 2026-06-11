@@ -159,10 +159,13 @@ class CmuxRemoteApp(App):
         self._update_preview(str(event.ref), event.snapshot.content)
 
     def _on_synthesis_ready(self, event: "SynthesisReady") -> None:
+        if event is None or event.result is None:
+            return
         log = self.query_one("#llm-log", RichLog)
-        log.write(f"[bold green]=== LLM Synthesis ({self.llm.provider_name}/{self.llm.model}) ===[/]")
+        provider = getattr(self.llm, 'provider_name', 'unknown')
+        model = getattr(self.llm, 'model', 'unknown')
+        log.write(f"[bold green]=== LLM Synthesis ({provider}/{model}) ===[/]")
         log.write(event.result.raw_text)
-        # Smart feature: one-click send summary as instruction (example)
         if event.result.global_focus_list:
             log.write("[dim]Tip: Use LLM output to drive actions on specific surfaces[/]")
 
@@ -185,21 +188,37 @@ class CmuxRemoteApp(App):
                 self._update_preview(self.current_surface, "(no screen data — surface may be disconnected)")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "btn-synth" and self.current_surface:
-            self.orchestrator.synthesize([SurfaceRef(self.current_surface)])
-        elif event.button.id == "btn-browser" and self.current_surface:
-            # Browser parity example (maps cmux browser verbs)
-            self.orchestrator.execute(["browser", "open", "https://example.com"])  # via generic
-            self.query_one("#llm-log", RichLog).write("[cyan]Browser open demo (full verbs in Wave 2)[/]")
+        try:
+            if event.button.id == "btn-synth" and self.current_surface:
+                result = self.orchestrator.synthesize([SurfaceRef(self.current_surface)])
+                if result is None:
+                    self.query_one("#llm-log", RichLog).write(
+                        "[yellow]Synthesis returned no result — check LLM config and surface data[/]"
+                    )
+            elif event.button.id == "btn-browser" and self.current_surface:
+                self.orchestrator.execute(["browser", "open", "https://example.com"])
+                self.query_one("#llm-log", RichLog).write("[cyan]Browser open demo (full verbs in Wave 2)[/]")
+        except Exception as e:
+            self.query_one("#llm-log", RichLog).write(f"[red]Error: {e}[/]")
 
     def action_attach(self) -> None:
         if self.current_surface:
-            self.orchestrator.attach(SurfaceRef(self.current_surface))
-            self.query_one("#llm-log", RichLog).write(f"[cyan]ATTACH {self.current_surface} — keys stream live (Ctrl-] to detach in full impl)[/]")
+            try:
+                self.orchestrator.attach(SurfaceRef(self.current_surface))
+                self.query_one("#llm-log", RichLog).write(f"[cyan]ATTACH {self.current_surface} — keys stream live (Ctrl-] to detach in full impl)[/]")
+            except Exception as e:
+                self.query_one("#llm-log", RichLog).write(f"[red]Attach error: {e}[/]")
 
     def action_synthesize(self) -> None:
         if self.current_surface:
-            self.orchestrator.synthesize([SurfaceRef(self.current_surface)])
+            try:
+                result = self.orchestrator.synthesize([SurfaceRef(self.current_surface)])
+                if result is None:
+                    self.query_one("#llm-log", RichLog).write(
+                        "[yellow]Synthesis returned no result — check LLM config and surface data[/]"
+                    )
+            except Exception as e:
+                self.query_one("#llm-log", RichLog).write(f"[red]Synthesis error: {e}[/]")
         else:
             self.query_one("#llm-log", RichLog).write("[yellow]Select a surface first (navigate tree and press Enter)[/]")
 
