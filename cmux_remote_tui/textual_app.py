@@ -189,6 +189,23 @@ class CmuxRemoteApp(App):
 def run_app():
     """Entry point for SOTA Textual TUI."""
     import os
-    host = os.environ.get("CMUX_REMOTE_HOST") or os.environ.get("CMUX_MINI_HOST", "desk")
+    import sys
+    host = None
+    # Support --host/-H from CLI (launcher usually sets via env + hard default macmini-ts)
+    argv = sys.argv[1:]
+    i = 0
+    while i < len(argv):
+        if argv[i] in ("--host", "-H") and i + 1 < len(argv):
+            host = argv[i + 1]
+            break
+        i += 1
+    if not host:
+        host = os.environ.get("CMUX_REMOTE_HOST") or os.environ.get("CMUX_MINI_HOST")
+    if not host:
+        host = "macmini-ts"  # hard default to match the "latwy skrypt"
     app = CmuxRemoteApp(host=host)
     app.run()
+
+
+if __name__ == "__main__":
+    run_app()

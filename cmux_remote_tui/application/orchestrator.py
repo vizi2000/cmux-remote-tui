@@ -61,17 +61,10 @@ class CmuxOrchestrator:
         self._refresh_tree()
 
     def _refresh_tree(self) -> None:
-        raw_tree = self._client.get_full_tree()  # uses the enhanced client
-        self._tree = self._parse_tree(raw_tree) if raw_tree else None
+        # Use the protocol method which returns parsed CmuxTree
+        self._tree = self._client.get_tree()
         if self._tree and self._on_tree_updated:
             self._on_tree_updated(TreeUpdated(self._tree))
-
-    def _parse_tree(self, raw: dict) -> CmuxTree:
-        # Use the parser; in real would be injected or from domain
-        from ..domain.parser import parse_cmux_tree
-        # Note: if raw has 'full_tree' use it, else raw
-        tree_json = raw.get("full_tree", raw)
-        return parse_cmux_tree(tree_json)
 
     def get_screen(self, ref: SurfaceRef, lines: int = 120, scrollback: bool = False) -> Optional[str]:
         snap = self._client.read_screen(ref, lines, scrollback)

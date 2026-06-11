@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Super simple launcher for cmux-remote-tui (Textual SOTA)
+# Usage: cmux-remote-tui [host]
+# Defaults to macmini-ts
+# Uses good Python (avoids broken 3.14), sets local-claude default, good help.
+# No auto pip install.
+
+set -euo pipefail
+
+# Safe arg handling under nounset (-u). Never reference bare $1/$@ without guard.
+# First arg (if present) is the host. Falls back to CMUX_REMOTE_HOST then hard default "macmini-ts".
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || "${1:-}" == "help" ]]; then
+  cat <<'HLP'
+cmux-remote-tui - easy remote TUI for cmux on Mac Mini etc. (Textual + LLM Conductor)
+
+Just run:
+  cmux-remote-tui
+  cmux-remote-tui macmini-ts
+  CMUX_REMOTE_HOST=somehost cmux-remote-tui
+
+Defaults to macmini-ts (your Mac Mini via Tailscale).
+
+Auto picks working Python (prefers the Framework 3.13 you installed with; avoids broken Homebrew 3.14).
+Auto sets LLM provider (local-claude if 'claude' in PATH, else grok/codex, else openai-compatible ready for llm.borg.tools / OpenRouter).
+
+In TUI:
+  ?         help overlay
+  r         refresh tree
+  arrows/enter   browse hierarchy (full windows/workspaces/panes/surfaces + browsers)
+  a / f     attach / focus surface
+  Ctrl+S    LLM synthesize (the killer feature: reads many surfaces, produces prioritized Focus List + state per agent)
+  q         quit
+
+One-time setup (use your good python):
+  cd ~/Projects/active/cmux-remote-tui && /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m pip install -e .
+  ./install.sh macmini-ts     # (optional) copies agent + launcher
+
+Make sure ~/.local/bin is in PATH.
+HLP
+  exit 0
+fi
+
+HOST="${1:-${CMUX_REMOTE_HOST:-macmini-ts}}"
+
+# Good Python - prefer the Framework 3.13 that works for you (the one that succeeded your pip)
+PYTHON="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+if [ ! -x "$PYTHON" ] || ! "$PYTHON" -c "import cmux_remote_tui.textual_app" 2>/dev/null; then
+  PYTHON=$(command -v python3.13 || command -v python3)
+fi
+
+if ! "$PYTHON" -c "import cmux_remote_tui.textual_app" 2>/dev/null; then
+  echo "cmux-remote-tui: package not installed for $PYTHON"
+  echo "Run: cd ~/Projects/active/cmux-remote-tui && $PYTHON -m pip install -e ."
+  exit 1
+fi
+
+# Default LLM provider (exactly as user requested: local CLIs first, then openai-compatible)
+if [ -z "${CMUX_LLM_PROVIDER:-}" ]; then
+  if command -v claude >/dev/null 2>&1; then
+    export CMUX_LLM_PROVIDER=local-claude
+    # local claude CLI usually uses its own default/latest model; avoid forcing old dated name
+    : "${CMUX_LLM_MODEL:=}"
+  elif command -v grok >/dev/null 2>&1; then
+    export CMUX_LLM_PROVIDER=local-grok
+  elif command -v codex >/dev/null 2>&1; then
+    export CMUX_LLM_PROVIDER=local-codex
+  else
+    export CMUX_LLM_PROVIDER=openai-compatible
+    : "${OPENAI_BASE_URL:=https://llm.borg.tools/v1}"
+    : "${OPENAI_API_KEY:=${OPENROUTER_API_KEY:-}}"
+    : "${CMUX_LLM_MODEL:=claude-3-5-sonnet-20241022}"
+  fi
+fi
+
+# Propagate host via env so run_app() and CmuxRemoteApp pick the right default (macmini-ts)
+export CMUX_REMOTE_HOST="$HOST"
+
+# Exec the Textual SOTA app. We already set the env; do not forward raw "$@" (it would duplicate host).
+exec "$PYTHON" -c "from cmux_remote_tui.textual_app import run_app; run_app()"

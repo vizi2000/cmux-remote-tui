@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import List, Any
 
 from ..domain.protocols import CmuxClient
-from ..domain.models import CmuxTree, SurfaceRef, ScreenSnapshot, parse_cmux_tree
+from ..domain.models import CmuxTree, SurfaceRef, ScreenSnapshot
+from ..domain.parser import parse_cmux_tree
 from ..client import Agent as SshAgent  # the existing transport
 
 
@@ -39,6 +40,11 @@ class SshCmuxClient(CmuxClient):
         data = self._agent.call("tree") or {}
         full = data.get("full_tree") or {}
         return parse_cmux_tree(full) if full else CmuxTree()
+
+    def get_full_tree(self) -> dict:
+        """Compatibility shim for orchestrator / old code expecting raw agent dict."""
+        data = self._agent.call("tree") or {}
+        return data
 
     def read_screen(self, ref: SurfaceRef, lines: int = 200, scrollback: bool = False) -> ScreenSnapshot:
         data = self._agent.call("read", {"ref": str(ref), "lines": lines, "sb": scrollback})

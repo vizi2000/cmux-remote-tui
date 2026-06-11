@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# cmux-remote-tui installer.
+# cmux-remote-tui installer (modern v0.2+).
 #
-# Installs the client locally and copies the lightweight agent to the remote
-# host that runs cmux. The agent is plain Python 3 (stdlib only) and just shells
-# out to the cmux CLI already installed on that host.
+# - Installs the package in editable mode using a WORKING Python (avoids Homebrew 3.14 pyexpat crash)
+# - Copies the zero-dep agent to the remote host (Mac Mini etc.)
+# - Installs the easy launcher script (recommended)
 #
 # Usage:
 #   ./install.sh <ssh-host>
 #
 # Example:
-#   ./install.sh my-mac          # an entry in your ~/.ssh/config
-#   ./install.sh user@10.0.0.5
+#   ./install.sh macmini-ts
+#   ./install.sh desk
 #
 set -euo pipefail
 
@@ -22,47 +22,70 @@ if [[ -z "$HOST" ]]; then
 fi
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOCAL_LIB="$HOME/.local/lib/cmux-remote-tui"
+
+# --- Find a working Python that can import the package (same logic as the easy launcher) ---
+PYTHON=""
+for cand in \
+    python3 \
+    python3.13 \
+    python3.12 \
+    /Library/Frameworks/Python.framework/Versions/3.13/bin/python3 \
+    /opt/homebrew/bin/python3.13 \
+    /opt/homebrew/bin/python3 ; do
+    if command -v "$cand" >/dev/null 2>&1; then
+        if "$cand" -c "import cmux_remote_tui.textual_app" 2>/dev/null; then
+            PYTHON="$cand"
+            break
+        fi
+    fi
+done
+
+if [ -z "$PYTHON" ]; then
+    echo "ERROR: No Python found that has cmux-remote-tui installed."
+    echo "Please run this first with a working Python (the one that can import textual):"
+    echo "  cd \"$SELF_DIR\""
+    echo "  pip install -e ."
+    echo ""
+    echo "Then re-run: ./install.sh $HOST"
+    exit 1
+fi
+
+echo "==> Using Python: $PYTHON"
+echo "==> Installing package in editable mode (so cmux-remote-tui always uses latest code)"
+"$PYTHON" -m pip install -e "$SELF_DIR" --quiet
+
 LOCAL_BIN="$HOME/.local/bin"
-REMOTE_LIB="\$HOME/.local/lib/cmux-remote-tui"
 
-echo "==> Installing client locally into $LOCAL_LIB"
-mkdir -p "$LOCAL_LIB" "$LOCAL_BIN"
-cp "$SELF_DIR/cmux_remote_tui/client.py" "$LOCAL_LIB/client.py"
-cp "$SELF_DIR/cmux_remote_tui/tui.py"    "$LOCAL_LIB/tui.py"
-cp "$SELF_DIR/cmux_remote_tui/agent.py"  "$LOCAL_LIB/agent.py"
-touch "$LOCAL_LIB/__init__.py"
+echo "==> Installing / updating agent on remote host: $HOST"
+REMOTE_HOME=$(ssh "$HOST" 'echo "$HOME"' 2>/dev/null)
+if [[ -z "$REMOTE_HOME" ]]; then
+  echo "ERROR: Could not determine remote \$HOME on $HOST via ssh." >&2
+  exit 1
+fi
+REMOTE_LIB="$REMOTE_HOME/.local/lib/cmux-remote-tui"
 
-cat > "$LOCAL_BIN/cmux-remote" <<EOF
-#!/usr/bin/env python3
-import os, sys
-sys.path.insert(0, os.path.expanduser("~/.local/lib"))
-from cmux_remote_tui_pkg.client import main  # type: ignore
-raise SystemExit(main(sys.argv))
-EOF
-# simpler: load the lib dir directly so the package import works
-cat > "$LOCAL_BIN/cmux-remote" <<EOF
-#!/usr/bin/env python3
-import os, sys
-LIB = os.path.expanduser("$LOCAL_LIB")
-sys.path.insert(0, os.path.dirname(LIB))
-# allow "import cmux_remote_tui" by aliasing the lib dir as a package
-import importlib.util, types
-pkg = types.ModuleType("cmux_remote_tui")
-pkg.__path__ = [LIB]
-sys.modules["cmux_remote_tui"] = pkg
-from cmux_remote_tui.client import main  # type: ignore
-raise SystemExit(main(sys.argv))
-EOF
-chmod +x "$LOCAL_BIN/cmux-remote"
-
-echo "==> Installing agent on remote host: $HOST"
-ssh "$HOST" "mkdir -p $REMOTE_LIB"
+ssh "$HOST" "mkdir -p \"$REMOTE_LIB\""
 scp -q "$SELF_DIR/cmux_remote_tui/agent.py" "$HOST:$REMOTE_LIB/agent.py"
 
+echo "==> Installing easy launcher (recommended)"
+mkdir -p "$LOCAL_BIN"
+cp "$SELF_DIR/scripts/cmux-remote-tui" "$LOCAL_BIN/cmux-remote-tui"
+chmod +x "$LOCAL_BIN/cmux-remote-tui"
+
+# Keep the old name working for backward compat (now points to the new Textual + safe launcher)
+ln -sf "$LOCAL_BIN/cmux-remote-tui" "$LOCAL_BIN/cmux-remote"
+
 echo
-echo "Done."
-echo "  Run:   CMUX_REMOTE_HOST=$HOST cmux-remote"
-echo "  or:    cmux-remote --host $HOST"
+echo "Done! The modern (Textual + LLM) version is now live."
+echo
+echo "  Run:   cmux-remote-tui"
+echo "  or:    CMUX_REMOTE_HOST=$HOST cmux-remote-tui"
+echo "  or:    cmux-remote-tui --host $HOST"
+echo
+echo "The launcher will auto-detect a good LLM provider (local claude/grok/codex preferred,"
+echo "otherwise openai-compatible ready for llm.borg.tools etc.)."
 echo
 echo "Make sure ~/.local/bin is on your PATH."
+echo "Run 'cmux-remote-tui --help' for usage and environment variables."
+echo
+echo "On the remote ($HOST): make sure cmux.app is running (open -a cmux)."
