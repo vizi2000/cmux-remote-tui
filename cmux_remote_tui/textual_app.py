@@ -74,7 +74,7 @@ class CmuxRemoteApp(App):
         super().__init__()
         self.host = host or os.environ.get("CMUX_REMOTE_HOST") or "desk"
         self.client: CmuxClient = SshCmuxClient(self.host)
-        self.llm: LlmProvider = make_llm_provider()  # env-driven: local-*/openrouter/openai-compatible
+        self.llm: LlmProvider = self._make_llm_safe()
         self.orchestrator = CmuxOrchestrator(
             self.client,
             self.llm,
@@ -82,6 +82,26 @@ class CmuxRemoteApp(App):
             on_screen_updated=self._on_screen_updated,
             on_synthesis_ready=self._on_synthesis_ready,
         )
+
+    def _make_llm_safe(self) -> LlmProvider:
+        """Create LLM provider with graceful fallback."""
+        try:
+            return make_llm_provider()
+        except Exception as e:
+            # Return a dummy provider that returns error messages
+            from unittest.mock import MagicMock
+            mock = MagicMock()
+            mock.provider_name = "error-fallback"
+            mock.model = "none"
+            mock.synthesize.return_value = __import__(
+                "cmux_remote_tui.domain.models", fromlist=["SynthesisResult"]
+            ).SynthesisResult(
+                per_surface=[],
+                global_focus_list=[f"LLM init error: {e}"],
+                raw_text=str(e),
+                timestamp=__import__("time").time(),
+            )
+            return mock
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -147,10 +167,13 @@ class CmuxRemoteApp(App):
             log.write("[dim]Tip: Use LLM output to drive actions on specific surfaces[/]")
 
     def _update_preview(self, ref: str, content: str):
-        log = self.query_one("#preview-log", RichLog)
-        log.clear()
-        # RichLog preserves ANSI from cmux read-screen (live preview)
-        log.write(content[:4000] if content else "(no data)")
+        try:
+            log = self.query_one("#preview-log", RichLog)
+            log.clear()
+            display = content[:4000] if content else "(no data — select a surface and press Enter to attach)"
+            log.write(display)
+        except Exception as e:
+            pass  # Preview panel may not be ready yet
 
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         if event.node and event.node.data:
@@ -158,6 +181,8 @@ class CmuxRemoteApp(App):
             snap = self.orchestrator.get_screen(SurfaceRef(self.current_surface), lines=80)
             if snap:
                 self._update_preview(self.current_surface, snap)
+            else:
+                self._update_preview(self.current_surface, "(no screen data — surface may be disconnected)")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-synth" and self.current_surface:
@@ -175,6 +200,8 @@ class CmuxRemoteApp(App):
     def action_synthesize(self) -> None:
         if self.current_surface:
             self.orchestrator.synthesize([SurfaceRef(self.current_surface)])
+        else:
+            self.query_one("#llm-log", RichLog).write("[yellow]Select a surface first (navigate tree and press Enter)[/]")
 
     def action_refresh_tree(self) -> None:
         self.orchestrator.refresh_tree()
