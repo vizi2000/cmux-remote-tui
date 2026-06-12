@@ -65,10 +65,9 @@ if [ -z "${CMUX_LLM_PROVIDER:-}" ]; then
   elif command -v codex >/dev/null 2>&1; then
     export CMUX_LLM_PROVIDER=local-codex
   else
-    export CMUX_LLM_PROVIDER=openai-compatible
-    : "${OPENAI_BASE_URL:=https://llm.borg.tools/v1}"
-    : "${OPENAI_API_KEY:=${OPENROUTER_API_KEY:-}}"
-    : "${CMUX_LLM_MODEL:=claude-3-5-sonnet-20241022}"
+    export CMUX_LLM_PROVIDER=openrouter
+    : "${OPENAI_BASE_URL:=https://openrouter.ai/api/v1}"
+    : "${CMUX_LLM_MODEL:=openrouter/auto}"
   fi
 fi
 
